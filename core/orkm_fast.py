@@ -1,0 +1,250 @@
+from __future__ import annotations
+
+from collections.abc import Sequence
+
+import torch
+from torch import Tensor
+
+from core.octonion_base import ensure_octonion_tensor
+from core.octonion_inner import row_energy_explicit, row_inner_fast
+from core.octonion_ops import oct_mul, oct_phase
+
+
+def _to_scalar_float64(value: float | Tensor, *, device: torch.device, name: str) -> Tensor:
+    scalar = torch.as_tensor(value, dtype=torch.float64, device=device)
+    if scalar.numel() != 1:
+        raise ValueError(f"{name} must be a scalar, got shape {tuple(scalar.shape)}")
+    return scalar.reshape(())
+
+
+def _validate_positive_scalar(value: float | Tensor, *, device: torch.device, name: str) -> Tensor:
+    scalar = _to_scalar_float64(value, device=device, name=name)
+    if bool(scalar <= 0.0):
+        raise ValueError(f"{name} must be > 0, got {float(scalar.item()):.6e}")
+    return scalar
+
+
+def _normalize_perm(perm: Sequence[int] | Tensor, n: int, device: torch.device) -> Tensor:
+    perm_tensor = torch.as_tensor(perm, dtype=torch.long, device=device).reshape(-1)
+    if perm_tensor.numel() != n:
+        raise ValueError(f"perm length must be {n}, got {perm_tensor.numel()}")
+    if torch.any((perm_tensor < 0) | (perm_tensor >= n)):
+        raise ValueError("perm contains out-of-range indices")
+    return perm_tensor
+
+
+def orkm_single_row_update_fast(
+    x: Tensor,
+    a_row: Tensor,
+    y_l: float | Tensor,
+    *,
+    omega: float | Tensor = 1.0,
+    phase_eps: float = 1e-18,
+    beta_eps: float = 1e-18,
+    return_info: bool = False,
+) -> Tensor | tuple[Tensor, dict[str, float | int | bool | str]]:
+    """
+    Vectorized explicit octonion Kaczmarz single-row update.
+    Mathematical rule is identical to orkm_single_row_update.
+    """
+    x_std = ensure_octonion_tensor(x, name="x")
+    a_row_std = ensure_octonion_tensor(a_row, name="a_row")
+    if x_std.ndim != 2 or a_row_std.ndim != 2:
+        raise ValueError(
+            f"x and a_row must both have shape (d, 8), got {tuple(x_std.shape)} and {tuple(a_row_std.shape)}"
+        )
+    if x_std.shape != a_row_std.shape:
+        raise ValueError(
+            f"Shape mismatch: x{tuple(x_std.shape)} vs a_row{tuple(a_row_std.shape)}"
+        )
+
+    y_scalar = _to_scalar_float64(y_l, device=x_std.device, name="y_l")
+    omega_scalar = _validate_positive_scalar(omega, device=x_std.device, name="omega")
+    b_l = torch.sqrt(torch.clamp(y_scalar, min=0.0))
+
+    s = row_inner_fast(a_row_std, x_std)
+    phase_s, valid = oct_phase(s, eps=phase_eps)
+    if not bool(valid.item()):
+        x_out = x_std.clone()
+        if return_info:
+            info = {
+                "skipped": True,
+                "skip_reason": "phase_invalid",
+                "phase_valid": False,
+                "beta_value": float("nan"),
+            }
+            return x_out, info
+        return x_out
+
+    s_target = b_l * phase_s
+    r = s_target - s
+
+    beta_l = row_energy_explicit(a_row_std)
+    if bool(beta_l <= beta_eps):
+        x_out = x_std.clone()
+        if return_info:
+            info = {
+                "skipped": True,
+                "skip_reason": "beta_too_small",
+                "phase_valid": True,
+                "beta_value": float(beta_l.item()),
+            }
+            return x_out, info
+        return x_out
+
+    step_scale = omega_scalar / beta_l
+    delta = oct_mul(a_row_std, r)
+    x_new = x_std + step_scale * delta
+
+    if return_info:
+        info = {
+            "skipped": False,
+            "skip_reason": "none",
+            "phase_valid": True,
+            "beta_value": float(beta_l.item()),
+        }
+        return x_new, info
+    return x_new
+
+
+def orkm_main_fast(
+    A: Tensor,
+    y: Tensor,
+    x0: Tensor,
+    max_iters: int,
+    *,
+    omega: float | Tensor = 1.0,
+    return_info: bool = False,
+) -> Tensor | tuple[Tensor, dict[str, float | int | list[int]]]:
+    """
+    Strictly-equivalent main loop with vectorized single-row internals.
+    """
+    A_std = ensure_octonion_tensor(A, name="A")
+    x_std = ensure_octonion_tensor(x0, name="x0")
+    if A_std.ndim != 3:
+        raise ValueError(f"A must have shape (n, d, 8), got {tuple(A_std.shape)}")
+    if x_std.ndim != 2:
+        raise ValueError(f"x0 must have shape (d, 8), got {tuple(x_std.shape)}")
+    if A_std.shape[1] != x_std.shape[0]:
+        raise ValueError(
+            f"Incompatible dimensions: A.shape={tuple(A_std.shape)}, x0.shape={tuple(x_std.shape)}"
+        )
+    if max_iters < 0:
+        raise ValueError(f"max_iters must be non-negative, got {max_iters}")
+    _ = _validate_positive_scalar(omega, device=A_std.device, name="omega")
+
+    n = A_std.shape[0]
+    y_std = torch.as_tensor(y, dtype=torch.float64, device=A_std.device).reshape(-1)
+    if y_std.shape[0] != n:
+        raise ValueError(f"y must have shape ({n},), got {tuple(y_std.shape)}")
+
+    x_est = x_std.clone()
+    skip_count_total = 0
+    total_row_updates = 0
+    epoch_skip_counts: list[int] = []
+    epoch_row_update_counts: list[int] = []
+
+    for _ in range(max_iters):
+        perm = torch.randperm(n, device=A_std.device)
+        epoch_skips = 0
+        epoch_updates = 0
+        for l in perm.tolist():
+            x_est, row_info = orkm_single_row_update_fast(
+                x_est,
+                A_std[l],
+                y_std[l],
+                omega=omega,
+                return_info=True,
+            )
+            epoch_updates += 1
+            if bool(row_info["skipped"]):
+                epoch_skips += 1
+
+        total_row_updates += epoch_updates
+        skip_count_total += epoch_skips
+        epoch_skip_counts.append(epoch_skips)
+        epoch_row_update_counts.append(epoch_updates)
+
+    if not return_info:
+        return x_est
+
+    skip_ratio = 0.0 if total_row_updates == 0 else skip_count_total / total_row_updates
+    info = {
+        "skip_count_total": int(skip_count_total),
+        "total_row_updates": int(total_row_updates),
+        "skip_ratio": float(skip_ratio),
+        "epoch_skip_counts": epoch_skip_counts,
+        "epoch_row_update_counts": epoch_row_update_counts,
+    }
+    return x_est, info
+
+
+def orkm_main_fast_fixed_perm(
+    A: Tensor,
+    y: Tensor,
+    x0: Tensor,
+    perm_list: Sequence[Sequence[int] | Tensor],
+    *,
+    omega: float | Tensor = 1.0,
+    return_info: bool = False,
+) -> Tensor | tuple[Tensor, dict[str, float | int | list[int]]]:
+    """
+    Same as orkm_main_fast, but uses an externally provided permutation list.
+    Useful for strict equivalence checks with identical row order.
+    """
+    A_std = ensure_octonion_tensor(A, name="A")
+    x_std = ensure_octonion_tensor(x0, name="x0")
+    if A_std.ndim != 3:
+        raise ValueError(f"A must have shape (n, d, 8), got {tuple(A_std.shape)}")
+    if x_std.ndim != 2:
+        raise ValueError(f"x0 must have shape (d, 8), got {tuple(x_std.shape)}")
+    if A_std.shape[1] != x_std.shape[0]:
+        raise ValueError(
+            f"Incompatible dimensions: A.shape={tuple(A_std.shape)}, x0.shape={tuple(x_std.shape)}"
+        )
+    _ = _validate_positive_scalar(omega, device=A_std.device, name="omega")
+
+    n = A_std.shape[0]
+    y_std = torch.as_tensor(y, dtype=torch.float64, device=A_std.device).reshape(-1)
+    if y_std.shape[0] != n:
+        raise ValueError(f"y must have shape ({n},), got {tuple(y_std.shape)}")
+
+    x_est = x_std.clone()
+    skip_count_total = 0
+    total_row_updates = 0
+    epoch_skip_counts: list[int] = []
+    epoch_row_update_counts: list[int] = []
+
+    for perm in perm_list:
+        perm_std = _normalize_perm(perm, n=n, device=A_std.device)
+        epoch_skips = 0
+        epoch_updates = 0
+        for l in perm_std.tolist():
+            x_est, row_info = orkm_single_row_update_fast(
+                x_est,
+                A_std[l],
+                y_std[l],
+                omega=omega,
+                return_info=True,
+            )
+            epoch_updates += 1
+            if bool(row_info["skipped"]):
+                epoch_skips += 1
+
+        total_row_updates += epoch_updates
+        skip_count_total += epoch_skips
+        epoch_skip_counts.append(epoch_skips)
+        epoch_row_update_counts.append(epoch_updates)
+
+    if not return_info:
+        return x_est
+
+    skip_ratio = 0.0 if total_row_updates == 0 else skip_count_total / total_row_updates
+    info = {
+        "skip_count_total": int(skip_count_total),
+        "total_row_updates": int(total_row_updates),
+        "skip_ratio": float(skip_ratio),
+        "epoch_skip_counts": epoch_skip_counts,
+        "epoch_row_update_counts": epoch_row_update_counts,
+    }
+    return x_est, info
