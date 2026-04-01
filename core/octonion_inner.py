@@ -54,6 +54,46 @@ def row_inner_batch(A: Tensor, x: Tensor) -> Tensor:
     return out
 
 
+def row_inner_fast(a_row: Tensor, x: Tensor) -> Tensor:
+    """
+    Vectorized explicit inner product equivalent to row_inner_explicit:
+        s = sum_j (conj(a_j) * x_j)
+    """
+    a_row_std = ensure_octonion_tensor(a_row, name="a_row")
+    x_std = ensure_octonion_tensor(x, name="x")
+    if a_row_std.ndim != 2 or x_std.ndim != 2:
+        raise ValueError(
+            f"a_row and x must both have shape (d, 8), got {a_row_std.shape} and {x_std.shape}"
+        )
+    if a_row_std.shape != x_std.shape:
+        raise ValueError(
+            f"Shape mismatch: a_row{tuple(a_row_std.shape)} vs x{tuple(x_std.shape)}"
+        )
+
+    terms = oct_mul(oct_conj(a_row_std), x_std)
+    return terms.sum(dim=0)
+
+
+def row_inner_batch_fast(A: Tensor, x: Tensor) -> Tensor:
+    """
+    Vectorized batch explicit inner product equivalent to row_inner_batch:
+        s_l = sum_j (conj(a_lj) * x_j)
+    """
+    A_std = ensure_octonion_tensor(A, name="A")
+    x_std = ensure_octonion_tensor(x, name="x")
+    if A_std.ndim != 3 or x_std.ndim != 2:
+        raise ValueError(
+            f"A must be (n, d, 8) and x must be (d, 8), got {A_std.shape} and {x_std.shape}"
+        )
+    if A_std.shape[1] != x_std.shape[0]:
+        raise ValueError(
+            f"Incompatible dimensions: A.shape={tuple(A_std.shape)}, x.shape={tuple(x_std.shape)}"
+        )
+
+    terms = oct_mul(oct_conj(A_std), x_std.unsqueeze(0))
+    return terms.sum(dim=1)
+
+
 def row_intensity_explicit(a_row: Tensor, x: Tensor) -> Tensor:
     """
     Single-row intensity:
@@ -72,6 +112,24 @@ def intensity_measurements_explicit(A: Tensor, x: Tensor) -> Tensor:
     return oct_abs_sq(s)
 
 
+def row_intensity_fast(a_row: Tensor, x: Tensor) -> Tensor:
+    """
+    Single-row intensity via row_inner_fast:
+        y = |sum_j(conj(a_j) * x_j)|^2
+    """
+    s = row_inner_fast(a_row, x)
+    return oct_abs_sq(s)
+
+
+def intensity_measurements_fast(A: Tensor, x: Tensor) -> Tensor:
+    """
+    All-row intensities via row_inner_batch_fast:
+        y_l = |s_l(x)|^2
+    """
+    s = row_inner_batch_fast(A, x)
+    return oct_abs_sq(s)
+
+
 def row_amplitude_explicit(a_row: Tensor, x: Tensor) -> Tensor:
     """
     Single-row amplitude:
@@ -87,6 +145,24 @@ def amplitude_measurements_explicit(A: Tensor, x: Tensor) -> Tensor:
         b_l = |s_l(x)|
     """
     s = row_inner_batch(A, x)
+    return oct_abs(s)
+
+
+def row_amplitude_fast(a_row: Tensor, x: Tensor) -> Tensor:
+    """
+    Single-row amplitude via row_inner_fast:
+        |s_l(x)|
+    """
+    s = row_inner_fast(a_row, x)
+    return oct_abs(s)
+
+
+def amplitude_measurements_fast(A: Tensor, x: Tensor) -> Tensor:
+    """
+    All-row amplitudes via row_inner_batch_fast:
+        b_l = |s_l(x)|
+    """
+    s = row_inner_batch_fast(A, x)
     return oct_abs(s)
 
 
