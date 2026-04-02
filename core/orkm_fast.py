@@ -34,14 +34,14 @@ def _normalize_perm(perm: Sequence[int] | Tensor, n: int, device: torch.device) 
 
 
 def orkm_single_row_update_fast(
-    x: Tensor,
-    a_row: Tensor,
-    y_l: float | Tensor,
-    *,
-    omega: float | Tensor = 1.0,
-    phase_eps: float = 1e-18,
-    beta_eps: float = 1e-18,
-    return_info: bool = False,
+        x: Tensor,
+        a_row: Tensor,
+        y_l: float | Tensor,
+        *,
+        omega: float | Tensor = 1.0,
+        phase_eps: float = 1e-18,
+        beta_eps: float = 1e-18,
+        return_info: bool = False,
 ) -> Tensor | tuple[Tensor, dict[str, float | int | bool | str]]:
     """
     Vectorized explicit octonion Kaczmarz single-row update.
@@ -108,13 +108,13 @@ def orkm_single_row_update_fast(
 
 
 def orkm_main_fast(
-    A: Tensor,
-    y: Tensor,
-    x0: Tensor,
-    max_iters: int,
-    *,
-    omega: float | Tensor = 1.0,
-    return_info: bool = False,
+        A: Tensor,
+        y: Tensor,
+        x0: Tensor,
+        max_iters: int,
+        *,
+        omega: float | Tensor = 1.0,
+        return_info: bool = False,
 ) -> Tensor | tuple[Tensor, dict[str, float | int | list[int]]]:
     """
     Strictly-equivalent main loop with vectorized single-row internals.
@@ -144,7 +144,7 @@ def orkm_main_fast(
     epoch_skip_counts: list[int] = []
     epoch_row_update_counts: list[int] = []
 
-    for _ in range(max_iters):
+    for it_ in range(max_iters):
         perm = torch.randperm(n, device=A_std.device)
         epoch_skips = 0
         epoch_updates = 0
@@ -159,7 +159,7 @@ def orkm_main_fast(
             epoch_updates += 1
             if bool(row_info["skipped"]):
                 epoch_skips += 1
-
+            print(it_, l)
         total_row_updates += epoch_updates
         skip_count_total += epoch_skips
         epoch_skip_counts.append(epoch_skips)
@@ -180,13 +180,13 @@ def orkm_main_fast(
 
 
 def orkm_main_fast_fixed_perm(
-    A: Tensor,
-    y: Tensor,
-    x0: Tensor,
-    perm_list: Sequence[Sequence[int] | Tensor],
-    *,
-    omega: float | Tensor = 1.0,
-    return_info: bool = False,
+        A: Tensor,
+        y: Tensor,
+        x0: Tensor,
+        perm_list: Sequence[Sequence[int] | Tensor],
+        *,
+        omega: float | Tensor = 1.0,
+        return_info: bool = False,
 ) -> Tensor | tuple[Tensor, dict[str, float | int | list[int]]]:
     """
     Same as orkm_main_fast, but uses an externally provided permutation list.

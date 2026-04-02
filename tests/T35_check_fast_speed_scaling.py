@@ -4,7 +4,7 @@ import os
 
 import torch
 
-from core.init_osi import normalize_oct_signal
+from algorithms.initializations.init_osi import normalize_oct_signal
 from core.octonion_inner import intensity_measurements_explicit
 from core.ork_m import orkm_single_row_update
 from core.orkm_fast import orkm_main_fast_fixed_perm

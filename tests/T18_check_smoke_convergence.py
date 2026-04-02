@@ -4,7 +4,7 @@ import time
 import numpy as np
 import torch
 
-from core.init_osi import init_osi, normalize_oct_signal
+from algorithms.initializations.init_osi import init_osi, normalize_oct_signal
 from core.octonion_align import right_aligned_distance
 from core.octonion_inner import intensity_measurements_explicit
 from core.octonion_metric import raw_distance

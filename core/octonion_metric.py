@@ -51,3 +51,16 @@ def optional_right_align_distance(
     raise NotImplementedError(
         "optional_right_align_distance is deferred and will be implemented in a later phase."
     )
+
+
+def normalize_oct_signal(x: Tensor, eps: float = 1e-18) -> Tensor:
+    """
+    Normalize explicit octonion signal x (shape: (d, 8)) to unit array norm.
+    """
+    x_std = ensure_octonion_tensor(x, name="x")
+    if x_std.ndim != 2:
+        raise ValueError(f"x must have shape (d, 8), got {tuple(x_std.shape)}")
+    nrm = oct_array_norm(x_std)
+    if bool(nrm <= eps):
+        raise ValueError("cannot normalize near-zero octonion signal")
+    return x_std / nrm

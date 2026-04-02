@@ -4,30 +4,19 @@ import torch
 from torch import Tensor
 
 from core.octonion_base import ensure_octonion_tensor
-from core.octonion_inner import row_energy_explicit, row_inner_explicit
-from core.octonion_metric import oct_array_norm
+from core.octonion_inner import row_energy_explicit, row_inner_fast
+from core.octonion_metric import oct_array_norm, normalize_oct_signal
 from core.octonion_ops import oct_mul
 
 
-def normalize_oct_signal(x: Tensor, eps: float = 1e-18) -> Tensor:
-    """
-    Normalize explicit octonion signal x (shape: (d, 8)) to unit array norm.
-    """
-    x_std = ensure_octonion_tensor(x, name="x")
-    if x_std.ndim != 2:
-        raise ValueError(f"x must have shape (d, 8), got {tuple(x_std.shape)}")
-    nrm = oct_array_norm(x_std)
-    if bool(nrm <= eps):
-        raise ValueError("cannot normalize near-zero octonion signal")
-    return x_std / nrm
-
-
 def init_osi(
-    A: Tensor,
-    y: Tensor,
-    *,
-    power_iters: int = 5,
-    eps: float = 1e-18,
+        A: Tensor,
+        y: Tensor,
+        *,
+        power_iters: int = 5,
+        eps: float = 1e-18,
+        verbose: bool = False,
+        progress_every: int = 1,
 ) -> Tensor:
     """
     OSI (Octonion Spectral Initialization), explicit and matrix-free.
@@ -46,28 +35,39 @@ def init_osi(
     y_std = torch.as_tensor(y, dtype=torch.float64, device=A_std.device).reshape(-1)
     if y_std.shape[0] != n:
         raise ValueError(f"y must have shape ({n},), got {tuple(y_std.shape)}")
+    if power_iters < 0:
+        raise ValueError(f"power_iters must be non-negative, got {power_iters}")
+    if progress_every <= 0:
+        raise ValueError(f"progress_every must be positive, got {progress_every}")
 
     x = torch.randn(d, 8, dtype=torch.float64, device=A_std.device)
     x = normalize_oct_signal(x, eps=eps)
-
     y_pos = torch.clamp(y_std, min=0.0)
-    for _ in range(power_iters):
+    if verbose:
+        print(f"[init_osi] start: n={n}, d={d}, power_iters={power_iters}")
+
+    for it in range(power_iters):
         x_next = torch.zeros_like(x, dtype=torch.float64, device=A_std.device)
         for l in range(n):
             a_row = A_std[l]
             beta_l = row_energy_explicit(a_row)
             if bool(beta_l <= eps):
                 continue
-            s_l = row_inner_explicit(a_row, x)
+            s_l = row_inner_fast(a_row, x)
             weight = y_pos[l] / beta_l
-            for j in range(d):
-                x_next[j] = x_next[j] + weight * oct_mul(a_row[j], s_l)
+            x_next = x_next + weight * oct_mul(a_row, s_l)
 
         nrm_next = oct_array_norm(x_next)
         if bool(nrm_next <= eps):
             x_next = torch.randn(d, 8, dtype=torch.float64, device=A_std.device)
         x = normalize_oct_signal(x_next, eps=eps)
+        if verbose and ((it + 1) % progress_every == 0 or (it + 1) == power_iters):
+            print(
+                f"[init_osi] iter={it + 1}/{power_iters}, x_norm={float(oct_array_norm(x).item()):.6e}"
+            )
 
     # Real scalar scale estimate.
     scale = torch.sqrt(torch.mean(y_pos))
+    if verbose:
+        print(f"[init_osi] done: scale={float(scale.item()):.6e}")
     return scale * x

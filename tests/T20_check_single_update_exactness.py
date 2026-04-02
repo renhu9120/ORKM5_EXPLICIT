@@ -2,7 +2,7 @@ import statistics
 
 import torch
 
-from core.init_osi import normalize_oct_signal
+from algorithms.initializations.init_osi import normalize_oct_signal
 from core.octonion_inner import intensity_measurements_explicit, row_inner_explicit
 from core.octonion_ops import oct_abs
 from core.ork_m import orkm_single_row_update

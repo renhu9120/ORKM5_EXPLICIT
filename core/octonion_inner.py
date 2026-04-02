@@ -108,7 +108,8 @@ def intensity_measurements_explicit(A: Tensor, x: Tensor) -> Tensor:
     All-row intensities:
         y_l = |s_l(x)|^2
     """
-    s = row_inner_batch(A, x)
+    # Keep the explicit mathematical definition while using a vectorized backend.
+    s = row_inner_batch_fast(A, x)
     return oct_abs_sq(s)
 
 
