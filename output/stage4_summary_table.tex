@@ -1,0 +1,17 @@
+\begin{table*}[t]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{c l c c c l}
+\toprule
+Group & Theory validated & Cases & Pass / Violations & Representative metric & Interpretation \\
+\midrule
+A & Step-size identity and $|e_\ell|=|r_\ell|$ & 7.2000e+02 & pass=1.0000e+00 & $\max\mathrm{err}_\mathrm{step}=8.3267e-17$; $\max|e_\ell/r_\ell|=8.8818e-16$ & Machine-precision agreement \\
+B & Cross-row response and self-transfer identity & 7.2000e+02 & pass=1.0000e+00; wrong-bracketing $\max=2.5918e+00$ & $\max\mathrm{err}_\mathrm{cross}=1.6773e-15$; $\max\mathrm{err}_\mathrm{self}=7.0801e-16$ & Exact formula validated; wrong bracketing fails strongly \\
+C & Transfer and perturbation bounds & 7.2000e+02 & violations=0 & $\max\mathrm{ratio}_\mathrm{res}=1.0000e+00$; $\max\mathrm{ratio}_\mathrm{cs}=1.0000e+00$ & All tested bounds numerically respected \\
+D & One-step sufficient descent inequality & 7.2000e+02 & violations=0 & empirical descent in [4.6667e-01, 6.5833e-01]; freq cond max=0.0000e+00 & Inequality valid; sufficient condition conservative \\
+E & Fixed-point and consistency structure & 5.3760e+03 & pass=1.0000e+00 & $\max\|x^+-x\|=8.5162e-17$; full-pass change=4.8718e-16 & Fixed-point behavior confirmed \\
+\bottomrule
+\end{tabular}}
+\caption{Summary of the numerical validation results for the Stage~4 structural theory.}
+\label{tab:stage4_validation_summary}
+\end{table*}

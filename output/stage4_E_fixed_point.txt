@@ -1,0 +1,8 @@
+[Stage4-E Summary]
+cases=5376
+max_abs_e_consistent=5.087681e-16
+max_update_norm_consistent=8.516172e-17
+pass_rate_zero_update=1.000000e+00
+zero_implies_consistent_checks=3842, zero_implies_consistent_pass_rate=1.000000e+00
+max_fullpass_change=4.871819e-16
+pass_rate_fullpass_fixed=1.000000e+00

@@ -1,0 +1,30 @@
+[Stage4-A Summary]
+d=4, n=48, omega=1.0
+cases=120, valid=120, skip=0
+max_err_step=8.326673e-17, mean_err_step=2.057274e-17, median_err_step=2.081668e-17, pass_rate_step=1.000000e+00
+max_err_e_r=4.440892e-16, mean_err_e_r=1.229991e-16, median_err_e_r=1.110223e-16, pass_rate_e_r=1.000000e+00
+[Stage4-A Summary]
+d=4, n=80, omega=1.0
+cases=120, valid=120, skip=0
+max_err_step=8.326673e-17, mean_err_step=1.816581e-17, median_err_step=1.387779e-17, pass_rate_step=1.000000e+00
+max_err_e_r=4.440892e-16, mean_err_e_r=7.827940e-17, median_err_e_r=5.551115e-17, pass_rate_e_r=1.000000e+00
+[Stage4-A Summary]
+d=8, n=96, omega=1.0
+cases=120, valid=120, skip=0
+max_err_step=8.326673e-17, mean_err_step=1.617991e-17, median_err_step=1.387779e-17, pass_rate_step=1.000000e+00
+max_err_e_r=4.440892e-16, mean_err_e_r=1.071192e-16, median_err_e_r=1.110223e-16, pass_rate_e_r=1.000000e+00
+[Stage4-A Summary]
+d=8, n=160, omega=1.0
+cases=120, valid=120, skip=0
+max_err_step=5.551115e-17, mean_err_step=1.536631e-17, median_err_step=1.387779e-17, pass_rate_step=1.000000e+00
+max_err_e_r=4.440892e-16, mean_err_e_r=8.588575e-17, median_err_e_r=5.551115e-17, pass_rate_e_r=1.000000e+00
+[Stage4-A Summary]
+d=16, n=192, omega=1.0
+cases=120, valid=120, skip=0
+max_err_step=5.551115e-17, mean_err_step=1.240508e-17, median_err_step=9.540979e-18, pass_rate_step=1.000000e+00
+max_err_e_r=8.881784e-16, mean_err_e_r=1.037943e-16, median_err_e_r=1.110223e-16, pass_rate_e_r=1.000000e+00
+[Stage4-A Summary]
+d=16, n=320, omega=1.0
+cases=120, valid=120, skip=0
+max_err_step=5.551115e-17, mean_err_step=1.148712e-17, median_err_step=1.127570e-17, pass_rate_step=1.000000e+00
+max_err_e_r=4.440892e-16, mean_err_e_r=9.046583e-17, median_err_e_r=6.938894e-17, pass_rate_e_r=1.000000e+00

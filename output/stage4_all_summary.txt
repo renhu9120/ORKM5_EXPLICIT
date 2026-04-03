@@ -1,0 +1,6 @@
+[Stage4-All] run summary
+test_stage4_step_identity.py: return_code=0
+test_stage4_cross_row_response.py: return_code=0
+test_stage4_cross_row_bound.py: return_code=0
+test_stage4_surrogate_descent.py: return_code=0
+test_stage4_fixed_point.py: return_code=0

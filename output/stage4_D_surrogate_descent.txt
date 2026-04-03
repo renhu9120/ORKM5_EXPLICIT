@@ -1,0 +1,36 @@
+[Stage4-D Summary]
+d=4, n=48, omega=1.0
+cases=120, valid=120, skip=0
+theorem_violations=0, max_ineq_gap=-6.455448e-01
+descent_condition_cases=0, descent_success_cases=0, descent_success_rate=0.000000e+00
+empirical_descent_rate_all=4.666667e-01, freq_eta_col_sum_excl_lt_1=0.000000e+00
+[Stage4-D Summary]
+d=4, n=80, omega=1.0
+cases=120, valid=120, skip=0
+theorem_violations=0, max_ineq_gap=-2.980930e-01
+descent_condition_cases=0, descent_success_cases=0, descent_success_rate=0.000000e+00
+empirical_descent_rate_all=5.000000e-01, freq_eta_col_sum_excl_lt_1=0.000000e+00
+[Stage4-D Summary]
+d=8, n=96, omega=1.0
+cases=120, valid=120, skip=0
+theorem_violations=0, max_ineq_gap=-9.407338e-01
+descent_condition_cases=0, descent_success_cases=0, descent_success_rate=0.000000e+00
+empirical_descent_rate_all=6.000000e-01, freq_eta_col_sum_excl_lt_1=0.000000e+00
+[Stage4-D Summary]
+d=8, n=160, omega=1.0
+cases=120, valid=120, skip=0
+theorem_violations=0, max_ineq_gap=-1.964054e+00
+descent_condition_cases=0, descent_success_cases=0, descent_success_rate=0.000000e+00
+empirical_descent_rate_all=6.000000e-01, freq_eta_col_sum_excl_lt_1=0.000000e+00
+[Stage4-D Summary]
+d=16, n=192, omega=1.0
+cases=120, valid=120, skip=0
+theorem_violations=0, max_ineq_gap=-2.105554e+00
+descent_condition_cases=0, descent_success_cases=0, descent_success_rate=0.000000e+00
+empirical_descent_rate_all=6.166667e-01, freq_eta_col_sum_excl_lt_1=0.000000e+00
+[Stage4-D Summary]
+d=16, n=320, omega=1.0
+cases=120, valid=120, skip=0
+theorem_violations=0, max_ineq_gap=-3.623244e-01
+descent_condition_cases=0, descent_success_cases=0, descent_success_rate=0.000000e+00
+empirical_descent_rate_all=6.583333e-01, freq_eta_col_sum_excl_lt_1=0.000000e+00

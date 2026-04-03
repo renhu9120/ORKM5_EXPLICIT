@@ -1,0 +1,36 @@
+[Stage4-B Summary]
+d=4, n=48, omega=1.0
+cases=120, valid=120, skip=0
+max_err_cross_response=1.410150e-15, mean_err_cross_response=9.665626e-16, median_err_cross_response=9.741451e-16, pass_rate_cross_response=1.000000e+00
+max_err_self_transfer=3.617153e-16, mean_err_self_transfer=7.781761e-17, pass_rate_self_transfer=1.000000e+00
+max_err_wrong_bracketing=2.480390e+00, mean_err_wrong_bracketing=6.063247e-01
+[Stage4-B Summary]
+d=4, n=80, omega=1.0
+cases=120, valid=120, skip=0
+max_err_cross_response=1.670876e-15, mean_err_cross_response=1.076227e-15, median_err_cross_response=1.024938e-15, pass_rate_cross_response=1.000000e+00
+max_err_self_transfer=3.382233e-16, mean_err_self_transfer=8.706951e-17, pass_rate_self_transfer=1.000000e+00
+max_err_wrong_bracketing=2.591813e+00, mean_err_wrong_bracketing=7.702905e-01
+[Stage4-B Summary]
+d=8, n=96, omega=1.0
+cases=120, valid=120, skip=0
+max_err_cross_response=1.499829e-15, mean_err_cross_response=1.082363e-15, median_err_cross_response=1.056172e-15, pass_rate_cross_response=1.000000e+00
+max_err_self_transfer=3.819702e-16, mean_err_self_transfer=9.387340e-17, pass_rate_self_transfer=1.000000e+00
+max_err_wrong_bracketing=1.833691e+00, mean_err_wrong_bracketing=5.055991e-01
+[Stage4-B Summary]
+d=8, n=160, omega=1.0
+cases=120, valid=120, skip=0
+max_err_cross_response=1.492104e-15, mean_err_cross_response=1.122696e-15, median_err_cross_response=1.101340e-15, pass_rate_cross_response=1.000000e+00
+max_err_self_transfer=7.080074e-16, mean_err_self_transfer=9.088778e-17, pass_rate_self_transfer=1.000000e+00
+max_err_wrong_bracketing=2.399117e+00, mean_err_wrong_bracketing=5.161885e-01
+[Stage4-B Summary]
+d=16, n=192, omega=1.0
+cases=120, valid=120, skip=0
+max_err_cross_response=1.613647e-15, mean_err_cross_response=1.180045e-15, median_err_cross_response=1.151741e-15, pass_rate_cross_response=1.000000e+00
+max_err_self_transfer=7.023038e-16, mean_err_self_transfer=1.014333e-16, pass_rate_self_transfer=1.000000e+00
+max_err_wrong_bracketing=1.233743e+00, mean_err_wrong_bracketing=3.740628e-01
+[Stage4-B Summary]
+d=16, n=320, omega=1.0
+cases=120, valid=120, skip=0
+max_err_cross_response=1.677319e-15, mean_err_cross_response=1.245634e-15, median_err_cross_response=1.225574e-15, pass_rate_cross_response=1.000000e+00
+max_err_self_transfer=5.795534e-16, mean_err_self_transfer=1.231627e-16, pass_rate_self_transfer=1.000000e+00
+max_err_wrong_bracketing=1.530333e+00, mean_err_wrong_bracketing=4.340866e-01

@@ -1,0 +1,36 @@
+[Stage4-C Summary]
+d=4, n=48, omega=1.0
+cases=120, valid=120, skip=0
+max_ratio_T=1.000000e+00, max_ratio_s=1.000000e+00, max_ratio_amp=1.000000e+00, max_ratio_res=1.000000e+00
+violations_T=0, violations_s=0, violations_amp=0, violations_res=0
+max_ratio_cs=1.000000e+00, violations_cs=0, max_abs_eta_ll_minus_1=3.330669e-16
+[Stage4-C Summary]
+d=4, n=80, omega=1.0
+cases=120, valid=120, skip=0
+max_ratio_T=1.000000e+00, max_ratio_s=1.000000e+00, max_ratio_amp=1.000000e+00, max_ratio_res=1.000000e+00
+violations_T=0, violations_s=0, violations_amp=0, violations_res=0
+max_ratio_cs=1.000000e+00, violations_cs=0, max_abs_eta_ll_minus_1=4.440892e-16
+[Stage4-C Summary]
+d=8, n=96, omega=1.0
+cases=120, valid=120, skip=0
+max_ratio_T=1.000000e+00, max_ratio_s=1.000000e+00, max_ratio_amp=1.000000e+00, max_ratio_res=1.000000e+00
+violations_T=0, violations_s=0, violations_amp=0, violations_res=0
+max_ratio_cs=1.000000e+00, violations_cs=0, max_abs_eta_ll_minus_1=4.440892e-16
+[Stage4-C Summary]
+d=8, n=160, omega=1.0
+cases=120, valid=120, skip=0
+max_ratio_T=1.000000e+00, max_ratio_s=1.000000e+00, max_ratio_amp=1.000000e+00, max_ratio_res=1.000000e+00
+violations_T=0, violations_s=0, violations_amp=0, violations_res=0
+max_ratio_cs=1.000000e+00, violations_cs=0, max_abs_eta_ll_minus_1=4.440892e-16
+[Stage4-C Summary]
+d=16, n=192, omega=1.0
+cases=120, valid=120, skip=0
+max_ratio_T=1.000000e+00, max_ratio_s=1.000000e+00, max_ratio_amp=1.000000e+00, max_ratio_res=1.000000e+00
+violations_T=0, violations_s=0, violations_amp=0, violations_res=0
+max_ratio_cs=1.000000e+00, violations_cs=0, max_abs_eta_ll_minus_1=4.440892e-16
+[Stage4-C Summary]
+d=16, n=320, omega=1.0
+cases=120, valid=120, skip=0
+max_ratio_T=1.000000e+00, max_ratio_s=1.000000e+00, max_ratio_amp=1.000000e+00, max_ratio_res=1.000000e+00
+violations_T=0, violations_s=0, violations_amp=0, violations_res=0
+max_ratio_cs=1.000000e+00, violations_cs=0, max_abs_eta_ll_minus_1=4.440892e-16
