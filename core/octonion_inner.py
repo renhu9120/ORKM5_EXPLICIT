@@ -131,6 +131,50 @@ def intensity_measurements_fast(A: Tensor, x: Tensor) -> Tensor:
     return oct_abs_sq(s)
 
 
+def intensity_measurements_independent_batches(A: Tensor, X: Tensor) -> Tensor:
+    """
+    Batched intensities when each batch element has its own ``A[b]``.
+
+    A: (B, n, d, 8)
+    X: (B, d, 8)
+    returns y: (B, n)
+    """
+    A_std = ensure_octonion_tensor(A, name="A")
+    X_std = ensure_octonion_tensor(X, name="X")
+    if A_std.ndim != 4:
+        raise ValueError(f"A must be (B, n, d, 8), got {tuple(A_std.shape)}")
+    if X_std.ndim != 3:
+        raise ValueError(f"X must be (B, d, 8), got {tuple(X_std.shape)}")
+    if A_std.shape[0] != X_std.shape[0] or A_std.shape[2] != X_std.shape[1]:
+        raise ValueError(f"shape mismatch A{tuple(A_std.shape)} vs X{tuple(X_std.shape)}")
+    terms = oct_mul(oct_conj(A_std), X_std.unsqueeze(1))
+    s = terms.sum(dim=2)
+    return oct_abs_sq(s)
+
+
+def intensity_measurements_batched(A: Tensor, X: Tensor) -> Tensor:
+    """
+    Batched intensities for a shared measurement operator ``A``.
+
+    A: (n, d, 8)
+    X: (B, d, 8)
+    returns y: (B, n) with y[b, l] = |sum_j conj(a_lj) * x[b, j]|^2
+    """
+    A_std = ensure_octonion_tensor(A, name="A")
+    X_std = ensure_octonion_tensor(X, name="X")
+    if A_std.ndim != 3:
+        raise ValueError(f"A must be (n, d, 8), got {tuple(A_std.shape)}")
+    if X_std.ndim != 3:
+        raise ValueError(f"X must be (B, d, 8), got {tuple(X_std.shape)}")
+    if A_std.shape[1] != X_std.shape[1]:
+        raise ValueError(
+            f"Incompatible d: A{tuple(A_std.shape)} vs X{tuple(X_std.shape)}"
+        )
+    terms = oct_mul(oct_conj(A_std).unsqueeze(0), X_std.unsqueeze(1))
+    s = terms.sum(dim=2)
+    return oct_abs_sq(s)
+
+
 def row_amplitude_explicit(a_row: Tensor, x: Tensor) -> Tensor:
     """
     Single-row amplitude:

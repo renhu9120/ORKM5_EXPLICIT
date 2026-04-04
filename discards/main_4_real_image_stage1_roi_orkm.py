@@ -18,6 +18,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from algorithms.algs.alg_orkm import alg_orkm
+from algorithms.algs.alg_orkm_cuda import alg_orkm_cuda, alg_orkm_cuda_batched
 from core.balloons_hs_io import (
     band_paths,
     pseudo_rgb_from_8bands,
@@ -25,20 +26,21 @@ from core.balloons_hs_io import (
     select_8_indices,
 )
 from core.octonion_align import apply_global_right_phase, estimate_global_right_phase, right_aligned_distance
-from core.octonion_inner import intensity_measurements_explicit
+from core.octonion_inner import intensity_measurements_batched, intensity_measurements_explicit, row_energy_batch
 from core.octonion_metric import oct_array_norm, normalize_oct_signal
 from core.patch_whitening import prepare_x_true, recover_from_whitened
+from core.patch_whitening_batched import prepare_x_true_batched
 
 
 @dataclass(frozen=True)
 class ROIConfig:
     patch_size: int = 8
     roi_patches_side: int = 4  # 4x4 patches => 16 patches
-    n_over_d: int = 20
-    passes: int = 80  # T=passes=80 in current ORKM implementation
-    A_seed: int = 3
-    seed_fixed: int = 2
-    power_iters: int = 1
+    n_over_d: int = 16
+    passes: int = 8  # T=passes=80 in current ORKM implementation
+    A_seed: int = 32
+    seed_fixed: int = 12
+    power_iters: int = 12
     stop_err: float = 0.0
 
 
@@ -73,6 +75,22 @@ def _patches8_to_x_true(patch8: torch.Tensor) -> torch.Tensor:
     # (8,patch,patch) -> (patch,patch,8) -> (d,8)
     x_true = patch8.permute(1, 2, 0).contiguous().view(patch_size * patch_size, 8)
     return x_true
+
+
+def _aux_for_batch_index(aux_batch: dict, b: int, signal_mode: str) -> dict:
+    if signal_mode == "raw":
+        return {"mode": "raw"}
+    if signal_mode == "normalized":
+        return {"mode": "normalized", "Sigma_raw": aux_batch["Sigma_raw"][b]}
+    if signal_mode == "whitened":
+        return {
+            "mode": "whitened",
+            "W": aux_batch["W"][b],
+            "Winv": aux_batch["Winv"][b],
+            "Sigma_raw": aux_batch["Sigma_raw"][b],
+            "Sigma_white": aux_batch["Sigma_white"][b],
+        }
+    raise ValueError(signal_mode)
 
 
 def _x_true_to_patches8(x_true: torch.Tensor, patch_size: int) -> torch.Tensor:
@@ -136,6 +154,8 @@ def run_stage1_roi_orkm(
     whiten_eps: float = 1e-10,
     passes: Optional[int] = None,
     interactive_show: bool = True,
+    use_cuda_orkm: bool = False,
+    patch_batch_size: int = 1,
 ) -> None:
     cfg = ROIConfig()
     patch_size = cfg.patch_size
@@ -155,6 +175,7 @@ def run_stage1_roi_orkm(
         bands8_np.append(read_png16_to_float64_01(p))
     S8_full = np.stack(bands8_np, axis=0).astype(np.float64)  # (8,H,W)
     H, W = int(S8_full.shape[1]), int(S8_full.shape[2])
+    S8_full_t = torch.as_tensor(S8_full, dtype=dtype, device=device_t)
 
     gh, gw, base_gr, base_gc = _compute_center_roi_patch_grid(H, W, patch_size, roi_side)
     roi_gr0 = base_gr
@@ -183,12 +204,17 @@ def run_stage1_roi_orkm(
     if device_t.type == "cuda":
         torch.cuda.manual_seed_all(cfg.A_seed)
     A = torch.randn((n, d, 8), dtype=dtype, device=device_t)
+    beta = row_energy_batch(A)
 
     print(f"[Stage1-ROI-ORKM] device={device_t.type}, dtype=float64")
     print(f"[Stage1-ROI-ORKM] image(H,W)=({H},{W}), patch_size={patch_size}, roi_side={roi_side}, ROI pixel=({roi_pix_y0}:{roi_pix_y1},{roi_pix_x0}:{roi_pix_x1})")
     print(f"[Stage1-ROI-ORKM] d={d}, n={n}, n/d={cfg.n_over_d}, T={T}, power_iters={cfg.power_iters}")
     print(f"[Stage1-ROI-ORKM] A fixed with A_seed={cfg.A_seed}")
     print(f"[Stage1-ROI-ORKM] signal_mode={signal_mode}, whiten_eps={whiten_eps:.6e}")
+    print(
+        f"[Stage1-ROI-ORKM] engine={'cuda_batched' if use_cuda_orkm and patch_batch_size > 1 else ('cuda_patch' if use_cuda_orkm else 'reference')}, "
+        f"patch_batch_size={patch_batch_size}"
+    )
 
     # Prepare reconstruction buffers.
     S8_rec = np.zeros_like(S8_full, dtype=np.float64)
@@ -201,32 +227,63 @@ def run_stage1_roi_orkm(
     patch_back_dist: List[float] = []
     patch_back_rel: List[float] = []
 
-    t0 = time.perf_counter()
-    patch_counter = 0
+    patch_jobs: List[Tuple[int, int, int, int, int]] = []
     for pr in range(roi_side):
         for pc in range(roi_side):
-            patch_index = pr * roi_side + pc  # ROI row-major 0..roi_side^2-1
+            patch_index = pr * roi_side + pc
             gr = roi_gr0 + pr
             gc = roi_gc0 + pc
             y0 = gr * patch_size
-            x0 = gc * patch_size
+            x0p = gc * patch_size
+            patch_jobs.append((patch_index, pr, pc, y0, x0p))
+            if len(patch_jobs) >= max_patches:
+                break
+        if len(patch_jobs) >= max_patches:
+            break
 
-            patch8 = torch.as_tensor(S8_full[:, y0:y0 + patch_size, x0:x0 + patch_size], dtype=dtype, device=device_t)
+    effective_bs = int(patch_batch_size) if (use_cuda_orkm and patch_batch_size > 1) else 1
+    if effective_bs < 1:
+        raise ValueError("patch_batch_size must be >= 1")
+
+    t0 = time.perf_counter()
+    patch_counter = 0
+    job_cursor = 0
+    while job_cursor < len(patch_jobs):
+        batch_slice = patch_jobs[job_cursor : job_cursor + effective_bs]
+        job_cursor += len(batch_slice)
+
+        if len(batch_slice) == 1:
+            patch_index, pr, pc, y0, x0p = batch_slice[0]
+            patch8 = S8_full_t[:, y0 : y0 + patch_size, x0p : x0p + patch_size]
             x_patch_raw = _patches8_to_x_true(patch8)
             x_true, aux = prepare_x_true(x_patch_raw, mode=signal_mode, eps=whiten_eps)
-
             y = intensity_measurements_explicit(A, x_true)
-
-            x_est, _info = alg_orkm(
-                A=A,
-                y=y,
-                T=T,
-                seed=None,
-                power_iters=cfg.power_iters,
-                x_true_proc=x_true,
-                stop_err=cfg.stop_err,
-                verbose=False,
-            )
+            if use_cuda_orkm:
+                x_est, _info = alg_orkm_cuda(
+                    A=A,
+                    y=y,
+                    T=T,
+                    seed=None,
+                    power_iters=cfg.power_iters,
+                    omega=1.0,
+                    beta=beta,
+                    x_true_proc=None,
+                    stop_err=cfg.stop_err,
+                    verbose=False,
+                    record_orbit_metrics=False,
+                    record_meas_rel=False,
+                )
+            else:
+                x_est, _info = alg_orkm(
+                    A=A,
+                    y=y,
+                    T=T,
+                    seed=None,
+                    power_iters=cfg.power_iters,
+                    x_true_proc=x_true,
+                    stop_err=cfg.stop_err,
+                    verbose=False,
+                )
             if x_est.shape != x_true.shape:
                 raise RuntimeError(f"Unexpected x_est shape {tuple(x_est.shape)}, expected {tuple(x_true.shape)}")
 
@@ -262,12 +319,14 @@ def run_stage1_roi_orkm(
             patch_back_rel.append(rel_l2_b)
 
             patch8_rec = _x_true_to_patches8(x_rec_back_aligned, patch_size).detach().cpu().numpy()
-            S8_rec[:, y0:y0 + patch_size, x0:x0 + patch_size] = patch8_rec
+            S8_rec[:, y0 : y0 + patch_size, x0p : x0p + patch_size] = patch8_rec
 
             patch8_ref = _x_true_to_patches8(x_ref_back, patch_size).detach().cpu().numpy()
-            S8_ref_back[:, y0 - roi_pix_y0:y0 - roi_pix_y0 + patch_size, x0 - roi_pix_x0:x0 - roi_pix_x0 + patch_size] = (
-                patch8_ref
-            )
+            S8_ref_back[
+                :,
+                y0 - roi_pix_y0 : y0 - roi_pix_y0 + patch_size,
+                x0p - roi_pix_x0 : x0p - roi_pix_x0 + patch_size,
+            ] = patch8_ref
 
             print(
                 f"[Stage1-ROI-ORKM] patch_index={patch_index:02d} (pr={pr},pc={pc})\n"
@@ -276,10 +335,75 @@ def run_stage1_roi_orkm(
                 f"  back_dist={dist_b:.6e}, back_log_dist={log_dist_b:.6e}, back_rel_l2={rel_l2_b:.6e}"
             )
             patch_counter += 1
-            if patch_counter >= max_patches:
-                break
-        if patch_counter >= max_patches:
-            break
+        else:
+            patch8_batch = torch.stack(
+                [S8_full_t[:, y0 : y0 + patch_size, x0p : x0p + patch_size] for _, _, _, y0, x0p in batch_slice],
+                dim=0,
+            )
+            X_raw = torch.stack([_patches8_to_x_true(patch8_batch[b]) for b in range(len(batch_slice))], dim=0)
+            x_true_b, aux_b = prepare_x_true_batched(X_raw, mode=signal_mode, eps=whiten_eps)
+            y_b = intensity_measurements_batched(A, x_true_b)
+            x_est_b, _ = alg_orkm_cuda_batched(
+                A=A,
+                y=y_b,
+                T=T,
+                seed=None,
+                power_iters=cfg.power_iters,
+                omega=1.0,
+                beta=beta,
+                verbose=False,
+            )
+            if x_est_b.shape != x_true_b.shape:
+                raise RuntimeError(
+                    f"Unexpected batched x_est shape {tuple(x_est_b.shape)}, expected {tuple(x_true_b.shape)}"
+                )
+            for b, (patch_index, pr, pc, y0, x0p) in enumerate(batch_slice):
+                x_true = x_true_b[b]
+                x_est = x_est_b[b]
+                aux = _aux_for_batch_index(aux_b, b, signal_mode)
+                y = y_b[b]
+                q_w = estimate_global_right_phase(x_true, x_est)
+                x_est_aligned = apply_global_right_phase(x_est, q_w)
+                dist_w = float(right_aligned_distance(x_true, x_est).item())
+                rel_l2_w = float((oct_array_norm(x_true - x_est_aligned) / oct_array_norm(x_true)).item())
+                log_dist_w = float(np.log(max(dist_w, 1e-300)))
+                y_hat_w = intensity_measurements_explicit(A, x_est_aligned)
+                meas_rel_w = float((torch.linalg.norm(y_hat_w - y) / torch.linalg.norm(y)).item())
+                x_rec_for_image = recover_from_whitened(x_est_aligned, signal_mode, aux)
+                x_patch_raw = X_raw[b]
+                if signal_mode == "whitened":
+                    x_ref_back = normalize_oct_signal(x_patch_raw)
+                    x_rec_back = normalize_oct_signal(x_rec_for_image)
+                else:
+                    x_ref_back = x_true
+                    x_rec_back = x_rec_for_image
+                q_b = estimate_global_right_phase(x_ref_back, x_rec_back)
+                x_rec_back_aligned = apply_global_right_phase(x_rec_back, q_b)
+                dist_b = float(right_aligned_distance(x_ref_back, x_rec_back).item())
+                rel_l2_b = float(
+                    (oct_array_norm(x_ref_back - x_rec_back_aligned) / oct_array_norm(x_ref_back)).item()
+                )
+                log_dist_b = float(np.log(max(dist_b, 1e-300)))
+                patch_white_dist.append(dist_w)
+                patch_white_rel.append(rel_l2_w)
+                patch_white_meas.append(meas_rel_w)
+                patch_back_dist.append(dist_b)
+                patch_back_rel.append(rel_l2_b)
+                patch8_rec = _x_true_to_patches8(x_rec_back_aligned, patch_size).detach().cpu().numpy()
+                S8_rec[:, y0 : y0 + patch_size, x0p : x0p + patch_size] = patch8_rec
+                patch8_ref = _x_true_to_patches8(x_ref_back, patch_size).detach().cpu().numpy()
+                S8_ref_back[
+                    :,
+                    y0 - roi_pix_y0 : y0 - roi_pix_y0 + patch_size,
+                    x0p - roi_pix_x0 : x0p - roi_pix_x0 + patch_size,
+                ] = patch8_ref
+                print(
+                    f"[Stage1-ROI-ORKM] patch_index={patch_index:02d} (pr={pr},pc={pc})\n"
+                    f"  white_dist={dist_w:.6e}, white_log_dist={log_dist_w:.6e}, "
+                    f"white_rel_l2={rel_l2_w:.6e}, white_meas_rel={meas_rel_w:.6e}\n"
+                    f"  back_dist={dist_b:.6e}, back_log_dist={log_dist_b:.6e}, back_rel_l2={rel_l2_b:.6e}"
+                )
+            patch_counter += len(batch_slice)
 
     # ROI metrics/visualization (back-domain reference vs back-domain reconstruction).
     S8_rec_roi = S8_rec[:, roi_pix_y0:roi_pix_y1, roi_pix_x0:roi_pix_x1]
@@ -351,6 +475,17 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="do not call plt.show() when saving ROI figure.",
     )
+    p.add_argument(
+        "--use-cuda-orkm",
+        action="store_true",
+        help="use alg_orkm_cuda (cached beta, no per-epoch orbit metrics) for ORKM iterations.",
+    )
+    p.add_argument(
+        "--patch-batch-size",
+        type=int,
+        default=16,
+        help="when >1 with --use-cuda-orkm, run batched patches per ORKM solve (shared A, shared row perm).",
+    )
     return p.parse_args()
 
 
@@ -366,5 +501,7 @@ if __name__ == "__main__":
         whiten_eps=float(args.whiten_eps),
         passes=args.passes,
         interactive_show=not args.no_interactive_show,
+        use_cuda_orkm=bool(args.use_cuda_orkm),
+        patch_batch_size=int(args.patch_batch_size),
     )
 

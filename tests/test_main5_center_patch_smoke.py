@@ -1,4 +1,4 @@
-"""Smoke import/run for scripts/main_5_real_image_center_patch_orkm.py (short passes, no GUI)."""
+"""Smoke import/run for scripts/main_3_real_img_exp_single_patch.py (short passes, no GUI)."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 SPONGES = ROOT / "dataset" / "complete_ms_data" / "sponges_ms" / "sponges_ms"
 BALLOONS = ROOT / "dataset" / "complete_ms_data" / "balloons_ms" / "balloons_ms"
-SCRIPT = ROOT / "scripts" / "main_5_real_image_center_patch_orkm.py"
+SCRIPT = ROOT / "scripts" / "main_3_real_img_exp_single_patch.py"
 
 
 def _ms_folder_and_prefix() -> tuple[str, str] | None:

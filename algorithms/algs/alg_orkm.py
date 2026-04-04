@@ -31,7 +31,10 @@ def alg_orkm(
       1) spectral initialization from intensity `y` (`init_osi`)
       2) lift to pseudo-real blocks `B = gamma_of_matrix_rows(A)`
       3) amplitude targets `b = sqrt(max(y,0))` from intensity
-      4) ORKM iterations (`grad_orkm.orkm_amplitude`)
+      4) ORKM iterations (`grad_orkm`)
+
+    Real-image runs should keep ``stop_err=0`` (fixed ``T`` passes). If ``stop_err>0`` and
+    ``x_true_proc`` is set, oracle early-stop uses ``sign_aligned_distance``.
 
     Returns:
       z_final: (8d,) pseudo-real iterate

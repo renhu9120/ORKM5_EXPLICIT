@@ -231,7 +231,7 @@ def grad_orkm(
                 y_hat = intensity_measurements_explicit(A_std, x_al)
                 mr = float((torch.linalg.norm(y_hat - y_std) / torch.linalg.norm(y_std)).item())
                 orbit_log_meas_rel.append(mr)
-            if stop_err > 0.0 and d_align <= stop_err:
+            if stop_err > 0.0 and d_pm <= stop_err:
                 if verbose:
                     log_align = float(
                         torch.log(
@@ -243,32 +243,28 @@ def grad_orkm(
                     )
                     print(
                         f"[grad_orkm] iter={it_ + 1}/{max_iters}, skip={epoch_skips}/{epoch_updates}, "
-                        f"dist_align={d_align:.6e}, log(dist_align)={log_align:.6e}, "
-                        f"dist_sign={d_pm:.6e}, log(dist_sign)={log_pm_stop:.6e}, early_stop=True"
+                        f"dist_sign={d_pm:.6e}, log(dist_sign)={log_pm_stop:.6e}, "
+                        f"dist_align(ref)={d_align:.6e}, log(dist_align)={log_align:.6e}, early_stop=True"
                     )
                 break
         if verbose and ((it_ + 1) % progress_every == 0 or (it_ + 1) == max_iters or it_ == 0):
             msg = f"[grad_orkm] iter={it_ + 1}/{max_iters}"
-            if d_align is not None and d_pm is not None:
-                log_align = float(
-                    torch.log(
-                        torch.tensor(max(d_align, 1e-300), dtype=torch.float64)
-                    ).item()
-                )
+            if d_pm is not None:
                 log_pm = float(
                     torch.log(torch.tensor(max(d_pm, 1e-300), dtype=torch.float64)).item()
                 )
-                msg += (
-                    f", dist_align={d_align:.6e}, log(dist_align)={log_align:.6e}, "
-                    f"dist_sign={d_pm:.6e}, log(dist_sign)={log_pm:.6e}"
-                )
+                msg += f", dist_sign={d_pm:.6e}, log(dist_sign)={log_pm:.6e}"
+                if d_align is not None:
+                    log_align = float(
+                        torch.log(
+                            torch.tensor(max(d_align, 1e-300), dtype=torch.float64)
+                        ).item()
+                    )
+                    msg += f", dist_align(ref)={d_align:.6e}, log(dist_align)={log_align:.6e}"
                 if orbit_log_meas_rel:
                     msg += f", meas_rel={orbit_log_meas_rel[-1]:.6e}"
             else:
-                msg += (
-                    ", dist_align=N/A, log(dist_align)=N/A, "
-                    "dist_sign=N/A, log(dist_sign)=N/A"
-                )
+                msg += ", dist_sign=N/A, log(dist_sign)=N/A"
             print(msg)
 
     if not return_info:

@@ -77,7 +77,7 @@ def run_orkm_main_sign(metric_mode: str = "all") -> None:
     )
 
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    out_dir = os.path.join(root, "output", "main_1_conv_sign")
+    out_dir = os.path.join(root, "../scripts/output", "main_1_conv_sign")
     os.makedirs(out_dir, exist_ok=True)
     csv_path = os.path.join(out_dir, "iter_metrics.csv")
     fig_path = os.path.join(out_dir, "conv_metrics.png")

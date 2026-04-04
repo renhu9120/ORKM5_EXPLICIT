@@ -12,7 +12,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 SPONGES = ROOT / "dataset" / "complete_ms_data" / "sponges_ms" / "sponges_ms"
 BALLOONS = ROOT / "dataset" / "complete_ms_data" / "balloons_ms" / "balloons_ms"
-SCRIPT = ROOT / "scripts" / "main_5_real_image_center_patch_orkm.py"
+SCRIPT = ROOT / "scripts" / "main_3_real_img_exp_single_patch.py"
 
 
 def _folder_prefix() -> tuple[str, str] | None:
