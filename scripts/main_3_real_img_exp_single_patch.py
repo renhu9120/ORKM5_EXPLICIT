@@ -29,6 +29,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from algorithms.constants import DEFAULT_ORKM_OMEGA
 from algorithms.algs.alg_orkm import alg_orkm
 from core.balloons_hs_io import (
     band_paths,
@@ -248,7 +249,7 @@ def run_center_patch_orkm(
         T=T,
         seed=None,
         power_iters=base.power_iters,
-        omega=1.0,
+        omega=DEFAULT_ORKM_OMEGA,
         record_meas_rel=record_meas_rel,
         x_true_proc=x_true,
         stop_err=base.stop_err,

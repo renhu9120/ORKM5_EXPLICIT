@@ -5,6 +5,7 @@ from collections.abc import Sequence
 import torch
 from torch import Tensor
 
+from algorithms.constants import DEFAULT_ORKM_OMEGA
 from core.octonion_base import ensure_octonion_tensor
 from core.octonion_align import apply_global_right_phase, estimate_global_right_phase, right_aligned_distance
 from core.octonion_inner import intensity_measurements_explicit, row_energy_explicit, row_inner_fast
@@ -41,7 +42,7 @@ def orkm_single_row_update_fast(
         a_row: Tensor,
         y_l: float | Tensor,
         *,
-        omega: float | Tensor = 1.0,
+        omega: float | Tensor = DEFAULT_ORKM_OMEGA,
         phase_eps: float = 1e-18,
         beta_eps: float = 1e-18,
         return_info: bool = False,
@@ -116,7 +117,7 @@ def grad_orkm(
         x0: Tensor,
         max_iters: int,
         *,
-        omega: float | Tensor = 1.0,
+        omega: float | Tensor = DEFAULT_ORKM_OMEGA,
         x_true_proc: Tensor | None = None,
         record_meas_rel: bool = False,
         stop_err: float = 0.0,

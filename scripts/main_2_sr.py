@@ -17,6 +17,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from algorithms.constants import DEFAULT_ORKM_OMEGA
 from algorithms.algs.alg_orkm import alg_orkm
 from algorithms.algs.alg_orkm_cuda import alg_orkm_cuda_success_rate_batched
 from core.octonion_align import right_aligned_distance
@@ -33,9 +34,9 @@ SOLVER_REGISTRY: Dict[str, TrialFn] = {
 
 
 def default_param_list() -> np.ndarray:
-    range1 = np.arange(3, 9.9, 1)
-    range2 = np.arange(10, 15.9, 0.2)
-    range3 = np.arange(16, 20.01, 1)
+    range1 = np.arange(3, 8.9, 1)
+    range2 = np.arange(9, 12.9, 0.2)
+    range3 = np.arange(13, 20.01, 1)
     return np.unique(np.concatenate([range1, range2, range3]))
 
 
@@ -81,7 +82,7 @@ def run_trial_batch_cuda(
             int(passes),
             seed=None,
             power_iters=int(power_iters),
-            omega=1.0,
+            omega=DEFAULT_ORKM_OMEGA,
             x_true=x_true,
             stop_err=float(stop_err),
             verbose=False,
@@ -138,7 +139,7 @@ def run_trial_single_cpu(
             int(passes),
             seed=None,
             power_iters=int(power_iters),
-            omega=1.0,
+            omega=DEFAULT_ORKM_OMEGA,
             record_meas_rel=False,
             x_true_proc=x_true,
             stop_err=float(stop_err),

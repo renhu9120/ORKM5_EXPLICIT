@@ -3,6 +3,7 @@ from __future__ import annotations
 import torch
 from torch import Tensor
 
+from algorithms.constants import DEFAULT_ORKM_OMEGA
 from core.octonion_base import ensure_octonion_tensor
 from core.octonion_inner import row_energy_explicit, row_inner_explicit
 from core.octonion_ops import oct_mul, oct_phase
@@ -27,7 +28,7 @@ def orkm_single_row_update(
     a_row: Tensor,
     y_l: float | Tensor,
     *,
-    omega: float | Tensor = 1.0,
+    omega: float | Tensor = DEFAULT_ORKM_OMEGA,
     phase_eps: float = 1e-18,
     beta_eps: float = 1e-18,
     return_info: bool = False,
@@ -113,7 +114,7 @@ def orkm_main(
     x0: Tensor,
     max_iters: int,
     *,
-    omega: float | Tensor = 1.0,
+    omega: float | Tensor = DEFAULT_ORKM_OMEGA,
     return_info: bool = False,
 ) -> Tensor | tuple[Tensor, dict[str, float | int | list[int]]]:
     """

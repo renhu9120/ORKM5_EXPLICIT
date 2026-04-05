@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional, Tuple
 import torch
 from torch import Tensor
 
+from algorithms.constants import DEFAULT_ORKM_OMEGA
 from algorithms.gradients.grad_orkm import grad_orkm
 from algorithms.initializations.init_osi import init_osi
 
@@ -18,7 +19,7 @@ def alg_orkm(
         seed: Optional[int] = None,
         passes: int = 50,
         power_iters: int = 5,
-        omega: float | Tensor = 1.0,
+        omega: float | Tensor = DEFAULT_ORKM_OMEGA,
         record_meas_rel: bool = False,
         x_true_proc: Optional[Tensor] = None,
         stop_err: float = 0.0,
