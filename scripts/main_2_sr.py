@@ -34,9 +34,9 @@ SOLVER_REGISTRY: Dict[str, TrialFn] = {
 
 
 def default_param_list() -> np.ndarray:
-    range1 = np.arange(3, 8.9, 1)
-    range2 = np.arange(9, 12.9, 0.2)
-    range3 = np.arange(13, 20.01, 1)
+    range1 = np.arange(5, 7.9, 1)
+    range2 = np.arange(8, 9.9, 0.2)
+    range3 = np.arange(10, 12.01, 1)
     return np.unique(np.concatenate([range1, range2, range3]))
 
 
