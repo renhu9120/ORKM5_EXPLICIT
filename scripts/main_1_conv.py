@@ -5,15 +5,15 @@ import numpy as np
 import torch
 
 from algorithms.algs.alg_orkm import alg_orkm
-from core.octonion_metric import normalize_oct_signal
-from core.octonion_align import right_aligned_distance
+from core.octonion_ops import normalize_oct_signal
 from core.octonion_inner import intensity_measurements_explicit
-from utils.img_utils import plot_conv_curvs
+from core.octonion_sign import sign_aligned_distance
+from utils.utils_plt import plot_conv_curvs
 
 
 def run_orkm_main() -> None:
     seed = 212
-    d = 64
+    d = 20
     n_over_d = 20
     n = n_over_d * d
     passes = 80
@@ -52,7 +52,7 @@ def run_orkm_main() -> None:
     if device.type == "cuda":
         torch.cuda.synchronize()
     wall = time.time() - t0
-    dist = right_aligned_distance(x_true, zt).item()
+    dist = sign_aligned_distance(x_true, zt).item()
 
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

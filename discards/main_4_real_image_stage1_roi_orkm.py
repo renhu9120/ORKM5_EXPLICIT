@@ -19,7 +19,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from algorithms.algs.alg_orkm import alg_orkm
 from algorithms.algs.alg_orkm_cuda import alg_orkm_cuda, alg_orkm_cuda_batched
-from core.balloons_hs_io import (
+from utils.utils_img import (
     band_paths,
     pseudo_rgb_from_8bands,
     read_png16_to_float64_01,

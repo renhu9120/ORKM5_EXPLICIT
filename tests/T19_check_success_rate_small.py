@@ -3,7 +3,7 @@ import torch
 from algorithms.initializations.init_osi import init_osi, normalize_oct_signal
 from core.octonion_align import right_aligned_distance
 from core.octonion_inner import intensity_measurements_explicit
-from core.ork_m import orkm_main
+from discards.ork_m import orkm_main
 
 
 def pick_device() -> torch.device:

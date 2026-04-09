@@ -31,16 +31,15 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from algorithms.constants import DEFAULT_ORKM_OMEGA
 from algorithms.algs.alg_orkm import alg_orkm
-from core.balloons_hs_io import (
+from utils.utils_img import (
     band_paths,
     pseudo_rgb_from_8bands,
     read_png16_to_float64_01,
     select_8_indices,
 )
-from core.octonion_align import apply_global_right_phase, estimate_global_right_phase
-from core.octonion_sign import sign_aligned_distance
+from core.octonion_sign import sign_aligned_distance, sign_aligned_estimate
 from core.octonion_inner import intensity_measurements_explicit
-from core.octonion_metric import oct_array_norm, normalize_oct_signal
+from core.octonion_ops import oct_array_norm, normalize_oct_signal
 from core.patch_whitening import prepare_x_true, recover_from_whitened
 
 
@@ -261,8 +260,8 @@ def run_center_patch_orkm(
     if x_est.shape != x_true.shape:
         raise RuntimeError(f"Unexpected x_est shape {tuple(x_est.shape)}, expected {tuple(x_true.shape)}")
 
-    q_w = estimate_global_right_phase(x_true, x_est)
-    x_est_aligned = apply_global_right_phase(x_est, q_w)
+    x_est_aligned = sign_aligned_estimate(x_true, x_est)
+    # x_est_aligned = apply_global_right_phase(x_est, q_w)
 
     dist_sign_w = float(sign_aligned_distance(x_true, x_est).item())
     rel_l2_w = float((oct_array_norm(x_true - x_est_aligned) / oct_array_norm(x_true)).item())
@@ -284,8 +283,7 @@ def run_center_patch_orkm(
         x_ref_back = x_true
         x_rec_back = x_rec_for_image
 
-    q_b = estimate_global_right_phase(x_ref_back, x_rec_back)
-    x_rec_back_aligned = apply_global_right_phase(x_rec_back, q_b)
+    x_rec_back_aligned = sign_aligned_estimate(x_ref_back, x_rec_back)
     dist_sign_b = float(sign_aligned_distance(x_ref_back, x_rec_back).item())
     rel_l2_b = float(
         (oct_array_norm(x_ref_back - x_rec_back_aligned) / oct_array_norm(x_ref_back)).item()

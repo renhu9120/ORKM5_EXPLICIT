@@ -5,7 +5,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Dict, List, Mapping, Tuple
 
 import numpy as np
 import torch
@@ -15,11 +15,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from core.balloons_hs_io import band_paths, read_png16_to_float64_01, select_8_indices
+from utils.utils_img import band_paths, read_png16_to_float64_01, select_8_indices
 from core.octonion_align import apply_global_right_phase, estimate_global_right_phase, right_aligned_distance
 from core.octonion_inner import intensity_measurements_explicit
 from core.octonion_metric import oct_array_norm, normalize_oct_signal
-from core.octonion_ops import oct_normalize, oct_right_mul_global
+from core.octonion_ops import oct_normalize
 
 
 def default_device() -> torch.device:

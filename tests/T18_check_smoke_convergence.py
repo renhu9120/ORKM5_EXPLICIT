@@ -8,8 +8,8 @@ from algorithms.initializations.init_osi import init_osi, normalize_oct_signal
 from core.octonion_align import right_aligned_distance
 from core.octonion_inner import intensity_measurements_explicit
 from core.octonion_metric import raw_distance
-from core.ork_m import orkm_main
-from utils.img_utils import plot_conv_curvs
+from discards.ork_m import orkm_main
+from utils.utils_plt import plot_conv_curvs
 
 
 def pick_device() -> torch.device:

@@ -18,7 +18,7 @@ from core.octonion_align import apply_global_right_phase
 from core.octonion_base import ensure_octonion_tensor, oct_basis, oct_one
 from core.octonion_metric import normalize_oct_signal, raw_distance
 from core.octonion_ops import oct_abs, oct_conj, oct_mul
-from utils.export_latex import plot_gap_distribution, save_table_csv, save_table_latex
+from utils.utils_latex import plot_gap_distribution, save_table_csv, save_table_latex
 
 
 def _fmt(value: float) -> str:

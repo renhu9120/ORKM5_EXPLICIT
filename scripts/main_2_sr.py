@@ -6,12 +6,11 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from torch import Tensor
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -19,10 +18,9 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from algorithms.constants import DEFAULT_ORKM_OMEGA
 from algorithms.algs.alg_orkm import alg_orkm
-from algorithms.algs.alg_orkm_cuda import alg_orkm_cuda_success_rate_batched
-from core.octonion_align import right_aligned_distance
+from algorithms.algs.alg_orkm import alg_orkm_cuda_success_rate_batched
 from core.octonion_inner import intensity_measurements_explicit, intensity_measurements_independent_batches
-from core.octonion_metric import normalize_oct_signal
+from core.octonion_ops import normalize_oct_signal
 from core.octonion_sign import sign_aligned_distance
 
 TrialFn = Callable[..., Any]
@@ -34,19 +32,17 @@ SOLVER_REGISTRY: Dict[str, TrialFn] = {
 
 
 def default_param_list() -> np.ndarray:
-    range1 = np.arange(5, 7.9, 1)
-    range2 = np.arange(8, 9.9, 0.2)
-    range3 = np.arange(10, 12.01, 1)
-    return np.unique(np.concatenate([range1, range2, range3]))
+    # range1 = np.arange(5, 7.9, 1)
+    # range2 = np.arange(8, 9.9, 0.2)
+    range3 = np.arange(8, 12.01, 1)
+    return range3
+
+    # return np.unique(np.concatenate([range1, range2, range3]))
 
 
 def nd_grid_descending(param_list: np.ndarray) -> List[float]:
     u = np.unique(np.asarray(param_list, dtype=float))
     return u[::-1].tolist()
-
-
-def _right_aligned_distance_row(x_true: Tensor, x_est: Tensor) -> float:
-    return float(right_aligned_distance(x_true, x_est).item())
 
 
 def run_trial_batch_cuda(
@@ -96,7 +92,6 @@ def run_trial_batch_cuda(
     d_minus = torch.linalg.norm((x_true + x_est).reshape(B, -1), ord=2, dim=1)
     d_sign_v = torch.minimum(d_plus, d_minus)
     d_sign_list = [float(d_sign_v[i].item()) for i in range(B)]
-    d_align_list = [_right_aligned_distance_row(x_true[i], x_est[i]) for i in range(B)]
 
     thr = float(stop_err)
     succ_list = [1 if d_sign_list[i] <= thr else 0 for i in range(B)]
@@ -107,7 +102,6 @@ def run_trial_batch_cuda(
     return {
         "successes": int(sum(succ_list)),
         "d_sign_list": d_sign_list,
-        "d_align_list": d_align_list,
         "steps_list": steps_list,
         "times_list": times_list,
         "wall_batch": wall,
@@ -147,7 +141,6 @@ def run_trial_single_cpu(
         )
     wall = time.perf_counter() - t0
     d_sign = float(sign_aligned_distance(x_true, x_est).item())
-    d_align = _right_aligned_distance_row(x_true, x_est)
     thr = float(stop_err)
     succ = 1 if d_sign <= thr else 0
     ec = info.get("epoch_row_update_counts")
@@ -155,7 +148,6 @@ def run_trial_single_cpu(
     return {
         "successes": succ,
         "d_sign_list": [d_sign],
-        "d_align_list": [d_align],
         "steps_list": [steps],
         "times_list": [wall],
         "wall_batch": wall,
@@ -165,7 +157,6 @@ def run_trial_single_cpu(
 def aggregate_trial_stats(
         *,
         d_sign_list: List[float],
-        d_align_list: List[float],
         steps_list: List[int],
         times_list: List[float],
         successes: int,
@@ -173,7 +164,6 @@ def aggregate_trial_stats(
 ) -> Dict[str, float]:
     sr = float(successes) / float(trials) if trials > 0 else float("nan")
     ds = np.asarray(d_sign_list, dtype=float)
-    da = np.asarray(d_align_list, dtype=float)
     st = np.asarray(steps_list, dtype=float)
     tm = np.asarray(times_list, dtype=float)
     out: Dict[str, float] = {
@@ -185,9 +175,6 @@ def aggregate_trial_stats(
         "mean_dist_sign": float(np.mean(ds)),
         "median_dist_sign": float(np.median(ds)),
         "max_dist_sign": float(np.max(ds)),
-        "mean_dist_align": float(np.mean(da)),
-        "median_dist_align": float(np.median(da)),
-        "max_dist_align": float(np.max(da)),
     }
     return out
 
@@ -222,7 +209,6 @@ def sweep_success_rate(
             print(f"[Main2-SR] [{r_idx}/{len(grid)}] n/d={nd_rate:.4f} (n={int(np.floor(nd_rate * d))})")
 
         d_sign_all: List[float] = []
-        d_align_all: List[float] = []
         steps_all: List[int] = []
         times_all: List[float] = []
         successes = 0
@@ -247,7 +233,6 @@ def sweep_success_rate(
                     power_iters=power_iters,
                 )
                 d_sign_all.extend(pack["d_sign_list"])
-                d_align_all.extend(pack["d_align_list"])
                 steps_all.extend(pack["steps_list"])
                 times_all.extend(pack["times_list"])
                 successes += int(pack["successes"])
@@ -266,7 +251,6 @@ def sweep_success_rate(
                         power_iters=power_iters,
                     )
                     d_sign_all.extend(pack["d_sign_list"])
-                    d_align_all.extend(pack["d_align_list"])
                     steps_all.extend(pack["steps_list"])
                     times_all.extend(pack["times_list"])
                     successes += int(pack["successes"])
@@ -281,7 +265,6 @@ def sweep_success_rate(
 
         stats = aggregate_trial_stats(
             d_sign_list=d_sign_all,
-            d_align_list=d_align_all,
             steps_list=steps_all,
             times_list=times_all,
             successes=successes,
@@ -332,9 +315,6 @@ def save_success_stats_csv(rows: List[Dict[str, Any]], csv_path: Path) -> Path:
         "mean_dist_sign",
         "median_dist_sign",
         "max_dist_sign",
-        "mean_dist_align",
-        "median_dist_align",
-        "max_dist_align",
     ]
     with csv_path.open("w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=fieldnames)
@@ -365,10 +345,10 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Synthetic success-rate experiment (main_2_sr).")
     p.add_argument("--solver-name", type=str, default="alg_orkm_cuda_success_rate_batched")
     p.add_argument("--device", type=str, default="cuda")
-    p.add_argument("--d", type=int, default=64)
+    p.add_argument("--d", type=int, default=20)
     p.add_argument("--trials-per-rate", type=int, default=16)
     p.add_argument("--trial-batch-size", type=int, default=8)
-    p.add_argument("--passes", type=int, default=2000)
+    p.add_argument("--passes", type=int, default=200)
     p.add_argument("--stop-err", type=float, default=1e-5)
     p.add_argument("--power-iters", type=int, default=5)
     p.add_argument(
@@ -399,11 +379,12 @@ def main() -> None:
 
     d_run = int(args.d)
     if bool(args.smoke):
-        param_list = np.array([12.0, 10.0], dtype=float)
-        trials_per_rate = 16
-        trial_batch_size = 8
-        passes = 80
-        d_run = min(d_run, 16)
+        # Minimal grid / trials / d — full SR sweeps are very expensive.
+        param_list = np.array([10.0], dtype=float)
+        trials_per_rate = 1
+        trial_batch_size = 1
+        passes = 12
+        d_run = min(d_run, 8)
     else:
         param_list = default_param_list()
         trials_per_rate = int(args.trials_per_rate)

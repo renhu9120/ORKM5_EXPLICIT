@@ -34,7 +34,7 @@ from matplotlib import pyplot as plt
 from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 
 
-from core.balloons_hs_io import (
+from utils.utils_img import (
     band_paths,
     pseudo_rgb_from_8bands,
     read_png16_to_float64_01,

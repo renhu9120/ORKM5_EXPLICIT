@@ -14,7 +14,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from algorithms.algs.alg_orkm import alg_orkm
-from core.balloons_hs_io import (
+from utils.utils_img import (
     band_paths,
     read_png16_to_float64_01,
     select_8_indices,

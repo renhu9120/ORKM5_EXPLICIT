@@ -2,8 +2,8 @@ import math
 
 import torch
 
-from core.ork_m import orkm_single_row_update
-from core.orkm_fast import orkm_single_row_update_fast
+from discards.ork_m import orkm_single_row_update
+from discards.orkm_fast import orkm_single_row_update_fast
 
 
 def pick_device() -> torch.device:

@@ -1,9 +1,11 @@
 from __future__ import annotations
+from __future__ import annotations
 
 import torch
 from torch import Tensor
 
-from core.octonion_base import ensure_octonion_tensor, oct_zero_like
+from core.octonion_base import ensure_octonion_tensor, oct_zero, oct_one
+from core.octonion_base import oct_zero_like
 
 
 def oct_conj(z: Tensor) -> Tensor:
@@ -160,3 +162,106 @@ def oct_right_mul_global(x: Tensor, a: Tensor) -> Tensor:
     if a_std.ndim != 1 or a_std.shape[0] != 8:
         raise ValueError(f"a must have shape (8,), got {tuple(a_std.shape)}")
     return oct_mul(x_std, a_std)
+
+
+
+
+def oct_array_norm(x: Tensor, eps: float = 0.0) -> Tensor:
+    """
+    Euclidean norm over all octonion blocks in x with shape (..., 8).
+    """
+    x_std = ensure_octonion_tensor(x, name="x")
+    total = oct_abs_sq(x_std).sum()
+    if eps > 0.0:
+        total = torch.clamp(total, min=float(eps) ** 2)
+    return torch.sqrt(total)
+
+
+def raw_distance(x_true: Tensor, x_est: Tensor) -> Tensor:
+    """
+    Raw distance d_raw = ||x_true - x_est||.
+    """
+    x_true_std = ensure_octonion_tensor(x_true, name="x_true")
+    x_est_std = ensure_octonion_tensor(x_est, name="x_est")
+    if x_true_std.shape != x_est_std.shape:
+        raise ValueError(
+            f"Shape mismatch: x_true{tuple(x_true_std.shape)} vs x_est{tuple(x_est_std.shape)}"
+        )
+    return oct_array_norm(x_true_std - x_est_std)
+
+
+def relative_error(x_true: Tensor, x_est: Tensor, eps: float = 1e-18) -> Tensor:
+    """
+    Relative error = raw_distance(x_true, x_est) / ||x_true||.
+    """
+    num = raw_distance(x_true, x_est)
+    den = oct_array_norm(x_true, eps=eps)
+    return num / den
+
+
+def optional_right_align_distance(
+    x_true: Tensor, x_est: Tensor, *, mode: str = "not_implemented"
+) -> Tensor:
+    """
+    Placeholder for right-aligned distance optimization.
+    This metric is intentionally deferred to a later phase.
+    """
+    _ = (x_true, x_est, mode)
+    raise NotImplementedError(
+        "optional_right_align_distance is deferred and will be implemented in a later phase."
+    )
+
+
+def normalize_oct_signal(x: Tensor, eps: float = 1e-18) -> Tensor:
+    """
+    Normalize explicit octonion signal x (shape: (d, 8)) to unit array norm.
+    """
+    x_std = ensure_octonion_tensor(x, name="x")
+    if x_std.ndim != 2:
+        raise ValueError(f"x must have shape (d, 8), got {tuple(x_std.shape)}")
+    nrm = oct_array_norm(x_std)
+    if bool(nrm <= eps):
+        raise ValueError("cannot normalize near-zero octonion signal")
+    return x_std / nrm
+
+
+
+
+
+def estimate_global_right_phase(x_true: Tensor, x_est: Tensor) -> Tensor:
+    """
+    Estimate global unit right phase q for x_est * q ~= x_true using:
+        q ~ normalize(sum_i conj(x_est[i]) * x_true[i]).
+    """
+    x_true_std = ensure_octonion_tensor(x_true, name="x_true")
+    x_est_std = ensure_octonion_tensor(x_est, name="x_est")
+    if x_true_std.shape != x_est_std.shape:
+        raise ValueError(
+            f"Shape mismatch: x_true{tuple(x_true_std.shape)} vs x_est{tuple(x_est_std.shape)}"
+        )
+    if x_true_std.ndim != 2:
+        raise ValueError(
+            f"x_true and x_est must both have shape (d, 8), got {tuple(x_true_std.shape)}"
+        )
+
+    d = x_true_std.shape[0]
+    acc = oct_zero(device=x_true_std.device)
+    for i in range(d):
+        term = oct_mul(oct_conj(x_est_std[i]), x_true_std[i])
+        acc = acc + term
+
+    q, valid = oct_normalize(acc)
+    if not bool(valid.item()):
+        return oct_one(device=x_true_std.device)
+    return q
+
+
+def apply_global_right_phase(x: Tensor, q: Tensor) -> Tensor:
+    """
+    Apply global right multiplication x_i -> x_i * q.
+    """
+    x_std = ensure_octonion_tensor(x, name="x")
+    q_std = ensure_octonion_tensor(q, name="q")
+    if q_std.ndim != 1 or q_std.shape[0] != 8:
+        raise ValueError(f"q must have shape (8,), got {tuple(q_std.shape)}")
+    return oct_right_mul_global(x_std, q_std)
